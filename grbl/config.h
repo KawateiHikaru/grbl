@@ -102,12 +102,13 @@
 // on separate pin, but homed in one cycle. Also, it should be noted that the function of hard limits
 // will not be affected by pin sharing.
 // NOTE: Defaults are set for a traditional 3-axis CNC machine. Z-axis first to clear, followed by X & Y.
-#define HOMING_CYCLE_0 (1<<Z_AXIS)                // REQUIRED: First move Z to clear workspace.
-#define HOMING_CYCLE_1 ((1<<X_AXIS)|(1<<Y_AXIS))  // OPTIONAL: Then move X,Y at the same time.
+//#define HOMING_CYCLE_0 (1<<Z_AXIS)                // REQUIRED: First move Z to clear workspace.
+//#define HOMING_CYCLE_1 ((1<<X_AXIS)|(1<<Y_AXIS))  // OPTIONAL: Then move X,Y at the same time.
+#define HOMING_CYCLE_0 ((1<<X_AXIS)|(1<<Y_AXIS))
 // #define HOMING_CYCLE_2                         // OPTIONAL: Uncomment and add axes mask to enable
 
 // NOTE: The following are two examples to setup homing for 2-axis machines.
-// #define HOMING_CYCLE_0 ((1<<X_AXIS)|(1<<Y_AXIS))  // NOT COMPATIBLE WITH COREXY: Homes both X-Y in one cycle. 
+// #define HOMING_CYCLE_0 ((1<<X_AXIS)|(1<<Y_AXIS))  // NOT COMPATIBLE WITH COREXY: Homes both X-Y in one cycle.
 
 // #define HOMING_CYCLE_0 (1<<X_AXIS)  // COREXY COMPATIBLE: First home X
 // #define HOMING_CYCLE_1 (1<<Y_AXIS)  // COREXY COMPATIBLE: Then home Y
@@ -117,7 +118,7 @@
 // greater.
 #define N_HOMING_LOCATE_CYCLE 1 // Integer (1-128)
 
-// Enables single axis homing commands. $HX, $HY, and $HZ for X, Y, and Z-axis homing. The full homing 
+// Enables single axis homing commands. $HX, $HY, and $HZ for X, Y, and Z-axis homing. The full homing
 // cycle is still invoked by the $H command. This is disabled by default. It's here only to address
 // users that need to switch between a two-axis and three-axis machine. This is actually very rare.
 // If you have a two-axis machine, DON'T USE THIS. Instead, just alter the homing cycle for two-axes.
@@ -262,7 +263,7 @@
 
 // The status report change for Grbl v1.1 and after also removed the ability to disable/enable most data
 // fields from the report. This caused issues for GUI developers, who've had to manage several scenarios
-// and configurations. The increased efficiency of the new reporting style allows for all data fields to 
+// and configurations. The increased efficiency of the new reporting style allows for all data fields to
 // be sent without potential performance issues.
 // NOTE: The options below are here only provide a way to disable certain data fields if a unique
 // situation demands it, but be aware GUIs may depend on this data. If disabled, it may not be compatible.
@@ -338,6 +339,14 @@
 // The hardware PWM output on pin D11 is required for variable spindle output voltages.
 #define VARIABLE_SPINDLE // Default enabled. Comment to disable.
 
+// Used by the variable spindle output only. These parameters set the maximum and minimum spindle speed
+// "S" g-code values to correspond to the maximum and minimum pin voltages. There are 256 discrete and 
+// equally divided voltage bins between the maximum and minimum spindle speeds. So for a 5V pin, 1000
+// max rpm, and 250 min rpm, the spindle output voltage would be set for the following "S" commands: 
+// "S1000" @ 5V, "S250" @ 0.02V, and "S625" @ 2.5V (mid-range). The pin outputs 0V when disabled.
+#define SPINDLE_MAX_RPM 90 // Max spindle RPM. This value is equal to 100% duty cycle on the PWM.
+#define SPINDLE_MIN_RPM 0.0    // Min spindle RPM. This value is equal to (1/256) duty cycle on the PWM.
+
 // Used by variable spindle output only. This forces the PWM output to a minimum duty cycle when enabled.
 // The PWM pin will still read 0V when the spindle is disabled. Most users will not need this option, but
 // it may be useful in certain scenarios. This minimum PWM settings coincides with the spindle rpm minimum
@@ -351,18 +360,15 @@
 
 // By default on a 328p(Uno), Grbl combines the variable spindle PWM and the enable into one pin to help
 // preserve I/O pins. For certain setups, these may need to be separate pins. This configure option uses
-// the spindle direction pin(D13) as a separate spindle enable pin along with spindle speed PWM on pin D11.
-// NOTE: This configure option only works with VARIABLE_SPINDLE enabled and a 328p processor (Uno).
-// NOTE: Without a direction pin, M4 will not have a pin output to indicate a difference with M3. 
-// NOTE: BEWARE! The Arduino bootloader toggles the D13 pin when it powers up. If you flash Grbl with
-// a programmer (you can use a spare Arduino as "Arduino as ISP". Search the web on how to wire this.),
-// this D13 LED toggling should go away. We haven't tested this though. Please report how it goes!
-// #define USE_SPINDLE_DIR_AS_ENABLE_PIN // Default disabled. Uncomment to enable.
+// the spindle direction pin(D13) as a separate spindle enable pin along with spindle speed PWM on pin D11. 
+// NOTE: This configure option only works with VARIABLE_SPINDLE enabled and a 328p processor (Uno). 
+// NOTE: With no direction pin, the spindle clockwise M4 g-code command will be removed. M3 and M5 still work.
+//#define USE_SPINDLE_DIR_AS_ENABLE_PIN // Default disabled. Uncomment to enable.
 
 // Alters the behavior of the spindle enable pin with the USE_SPINDLE_DIR_AS_ENABLE_PIN option . By default,
-// Grbl will not disable the enable pin if spindle speed is zero and M3/4 is active, but still sets the PWM 
+// Grbl will not disable the enable pin if spindle speed is zero and M3/4 is active, but still sets the PWM
 // output to zero. This allows the users to know if the spindle is active and use it as an additional control
-// input. However, in some use cases, user may want the enable pin to disable with a zero spindle speed and 
+// input. However, in some use cases, user may want the enable pin to disable with a zero spindle speed and
 // re-enable when spindle speed is greater than zero. This option does that.
 // NOTE: Requires USE_SPINDLE_DIR_AS_ENABLE_PIN to be enabled.
 // #define SPINDLE_ENABLE_OFF_WITH_ZERO_SPEED // Default disabled. Uncomment to enable.
@@ -542,8 +548,8 @@
 #define FORCE_BUFFER_SYNC_DURING_WCO_CHANGE // Default enabled. Comment to disable.
 
 // By default, Grbl disables feed rate overrides for all G38.x probe cycle commands. Although this
-// may be different than some pro-class machine control, it's arguable that it should be this way. 
-// Most probe sensors produce different levels of error that is dependent on rate of speed. By 
+// may be different than some pro-class machine control, it's arguable that it should be this way.
+// Most probe sensors produce different levels of error that is dependent on rate of speed. By
 // keeping probing cycles to their programmed feed rates, the probe sensor should be a lot more
 // repeatable. If needed, you can disable this behavior by uncommenting the define below.
 // #define ALLOW_FEED_OVERRIDE_DURING_PROBE_CYCLES // Default disabled. Uncomment to enable.
@@ -571,11 +577,11 @@
 #define PARKING_PULLOUT_INCREMENT 5.0 // Spindle pull-out and plunge distance in mm. Incremental distance.
                                       // Must be positive value or equal to zero.
 
-// Enables a special set of M-code commands that enables and disables the parking motion. 
-// These are controlled by `M56`, `M56 P1`, or `M56 Px` to enable and `M56 P0` to disable. 
-// The command is modal and will be set after a planner sync. Since it is g-code, it is 
+// Enables a special set of M-code commands that enables and disables the parking motion.
+// These are controlled by `M56`, `M56 P1`, or `M56 Px` to enable and `M56 P0` to disable.
+// The command is modal and will be set after a planner sync. Since it is g-code, it is
 // executed in sync with g-code commands. It is not a real-time command.
-// NOTE: PARKING_ENABLE is required. By default, M56 is active upon initialization. Use 
+// NOTE: PARKING_ENABLE is required. By default, M56 is active upon initialization. Use
 // DEACTIVATE_PARKING_UPON_INIT to set M56 P0 as the power-up default.
 // #define ENABLE_PARKING_OVERRIDE_CONTROL   // Default disabled. Uncomment to enable
 // #define DEACTIVATE_PARKING_UPON_INIT // Default disabled. Uncomment to enable.
@@ -587,7 +593,7 @@
 #define DISABLE_LASER_DURING_HOLD // Default enabled. Comment to disable.
 
 // This feature alters the spindle PWM/speed to a nonlinear output with a simple piecewise linear
-// curve. Useful for spindles that don't produce the right RPM from Grbl's standard spindle PWM 
+// curve. Useful for spindles that don't produce the right RPM from Grbl's standard spindle PWM
 // linear model. Requires a solution by the 'fit_nonlinear_spindle.py' script in the /doc/script
 // folder of the repo. See file comments on how to gather spindle data and run the script to
 // generate a solution.
@@ -612,26 +618,26 @@
 #define RPM_LINE_A4  1.203413e-01  // Used N_PIECES = 4. A and B constants of line 4.
 #define RPM_LINE_B4  1.151360e+03
 
-/* --------------------------------------------------------------------------------------- 
-  This optional dual axis feature is primarily for the homing cycle to locate two sides of 
+/* ---------------------------------------------------------------------------------------
+  This optional dual axis feature is primarily for the homing cycle to locate two sides of
   a dual-motor gantry independently, i.e. self-squaring. This requires an additional limit
   switch for the cloned motor. To self square, both limit switches on the cloned axis must
-  be physically positioned to trigger when the gantry is square. Highly recommend keeping  
+  be physically positioned to trigger when the gantry is square. Highly recommend keeping
   the motors always enabled to ensure the gantry stays square with the $1=255 setting.
 
-  For Grbl on the Arduino Uno, the cloned axis limit switch must to be shared with and 
+  For Grbl on the Arduino Uno, the cloned axis limit switch must to be shared with and
   wired with z-axis limit pin due to the lack of available pins. The homing cycle must home
   the z-axis and cloned axis in different cycles, which is already the default config.
 
   The dual axis feature works by cloning an axis step output onto another pair of step
-  and direction pins. The step pulse and direction of the cloned motor can be set 
+  and direction pins. The step pulse and direction of the cloned motor can be set
   independently of the main axis motor. However to save precious flash and memory, this
-  dual axis feature must share the same settings (step/mm, max speed, acceleration) as the 
+  dual axis feature must share the same settings (step/mm, max speed, acceleration) as the
   parent motor. This is NOT a feature for an independent fourth axis. Only a motor clone.
 
   WARNING: Make sure to test the directions of your dual axis motors! They must be setup
   to move the same direction BEFORE running your first homing cycle or any long motion!
-  Motors moving in opposite directions can cause serious damage to your machine! Use this 
+  Motors moving in opposite directions can cause serious damage to your machine! Use this
   dual axis feature at your own risk.
 */
 // NOTE: This feature requires approximately 400 bytes of flash. Certain configurations can
@@ -644,11 +650,11 @@
 #define DUAL_AXIS_SELECT  X_AXIS  // Must be either X_AXIS or Y_AXIS
 
 // To prevent the homing cycle from racking the dual axis, when one limit triggers before the
-// other due to switch failure or noise, the homing cycle will automatically abort if the second 
-// motor's limit switch does not trigger within the three distance parameters defined below. 
+// other due to switch failure or noise, the homing cycle will automatically abort if the second
+// motor's limit switch does not trigger within the three distance parameters defined below.
 // Axis length percent will automatically compute a fail distance as a percentage of the max
-// travel of the other non-dual axis, i.e. if dual axis select is X_AXIS at 5.0%, then the fail 
-// distance will be computed as 5.0% of y-axis max travel. Fail distance max and min are the 
+// travel of the other non-dual axis, i.e. if dual axis select is X_AXIS at 5.0%, then the fail
+// distance will be computed as 5.0% of y-axis max travel. Fail distance max and min are the
 // limits of how far or little a valid fail distance is.
 #define DUAL_AXIS_HOMING_FAIL_AXIS_LENGTH_PERCENT  5.0  // Float (percent)
 #define DUAL_AXIS_HOMING_FAIL_DISTANCE_MAX  25.0  // Float (mm)
@@ -661,16 +667,16 @@
 // Coolant pin A3 is moved to D13, replacing spindle direction.
 #define DUAL_AXIS_CONFIG_PROTONEER_V3_51    // Uncomment to select. Comment other configs.
 
-// NOTE: Arduino CNC Shield Clone (Originally Protoneer v3.0) has A.STP and A.DIR wired to 
+// NOTE: Arduino CNC Shield Clone (Originally Protoneer v3.0) has A.STP and A.DIR wired to
 // D12 and D13, respectively. With the limit pins and stepper enable pin on this same port,
 // the spindle enable pin had to be moved and spindle direction pin deleted. The spindle
 // enable pin now resides on A3, replacing coolant enable. Coolant enable is bumped over to
-// pin A4. Spindle enable is used far more and this pin setup helps facilitate users to 
-// integrate this feature without arguably too much work. 
+// pin A4. Spindle enable is used far more and this pin setup helps facilitate users to
+// integrate this feature without arguably too much work.
 // Variable spindle (i.e. laser mode) does NOT work with this shield as configured. While
 // variable spindle technically can work with this shield, it requires too many changes for
 // most user setups to accomodate. It would best be implemented by sharing all limit switches
-// on pins D9/D10 (as [X1,Z]/[X2,Y] or [X,Y2]/[Y1,Z]), home each axis independently, and 
+// on pins D9/D10 (as [X1,Z]/[X2,Y] or [X,Y2]/[Y1,Z]), home each axis independently, and
 // updating lots of code to ensure everything is running correctly.
 // #define DUAL_AXIS_CONFIG_CNC_SHIELD_CLONE  // Uncomment to select. Comment other configs.
 
